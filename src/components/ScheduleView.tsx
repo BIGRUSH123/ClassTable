@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { ScheduleItem, TimeSlot, Course, Teacher, Classroom, Class } from '../types';
-import { Calendar, Clock, MapPin, User, Users, Download, Image } from 'lucide-react';
+import { ScheduleItem, TimeSlot, Course, Teacher } from '../types';
+import { Calendar, Clock, MapPin, User, Download, Image, ChevronLeft, ChevronRight } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import { isWeekInRanges, formatWeekRanges } from '../utils/courseTimeParser';
 
 interface ScheduleViewProps {
   schedule: ScheduleItem[];
@@ -19,6 +20,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   teachers
 }) => {
   const [selectedTeacher, setSelectedTeacher] = useState<string>('all');
+  const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [isExporting, setIsExporting] = useState(false);
   const scheduleRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +54,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   // 过滤课表数据
   const filteredSchedule = schedule.filter(item => {
     if (selectedTeacher !== 'all' && item.teacherId !== selectedTeacher) return false;
+    // 检查该课表项是否在选中的周次有效
+    if (!isWeekInRanges(selectedWeek, item.weeks)) return false;
     return true;
   });
 
@@ -98,8 +102,14 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                 <span>{item.location}</span>
               </div>
             )}
+            {item.weeks && (
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                <span>{formatWeekRanges(item.weeks)}</span>
+              </div>
+            )}
             <div className="flex items-center gap-1">
-              <Users className="h-3 w-3" />
+              <User className="h-3 w-3" />
               <span>{course.credits}学分</span>
             </div>
           </div>
@@ -113,7 +123,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Calendar className="h-6 w-6" />
-          课表展示
+          课表展示 - 第{selectedWeek}周
         </h2>
         
         <div className="flex gap-4">
@@ -147,6 +157,43 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               ))}
             </select>
           </div>
+        </div>
+      </div>
+
+      {/* 周次选择器 */}
+      <div className="flex items-center gap-3 bg-white p-4 rounded-lg border border-gray-200">
+        <span className="font-medium text-gray-700">选择周次：</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSelectedWeek(Math.max(1, selectedWeek - 1))}
+            disabled={selectedWeek <= 1}
+            className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">第</span>
+            <select
+              value={selectedWeek}
+              onChange={(e) => setSelectedWeek(parseInt(e.target.value))}
+              className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              {Array.from({ length: 20 }, (_, i) => i + 1).map(week => (
+                <option key={week} value={week}>{week}</option>
+              ))}
+            </select>
+            <span className="text-sm text-gray-600">周</span>
+          </div>
+          <button
+            onClick={() => setSelectedWeek(Math.min(20, selectedWeek + 1))}
+            disabled={selectedWeek >= 20}
+            className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="ml-auto text-sm text-gray-600">
+          共{filteredSchedule.length}门课程
         </div>
       </div>
 

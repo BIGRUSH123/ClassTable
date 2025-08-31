@@ -3,14 +3,21 @@ import {
   Teacher, 
   TimeSlot, 
   ScheduleItem, 
-  Conflict 
+  Conflict,
+  WeekRange 
 } from '../types';
+import { isWeekInRanges } from './courseTimeParser';
 
 export interface SchedulingResult {
   schedule: ScheduleItem[];
   conflicts: Conflict[];
   success: boolean;
   message: string;
+}
+
+export interface SchedulingOptions {
+  selectedWeek?: number; // 指定周次，如果不指定则生成全学期
+  weekRange?: { start: number; end: number }; // 周次范围
 }
 
 export class SchedulingAlgorithm {
@@ -31,27 +38,33 @@ export class SchedulingAlgorithm {
   }
 
   // 主排课方法
-  public generateSchedule(): SchedulingResult {
+  public generateSchedule(options: SchedulingOptions = {}): SchedulingResult {
     this.schedule = [];
     const conflicts: Conflict[] = [];
 
     try {
       // 根据每个课程的固定时间段生成课表
       for (const course of this.courses) {
-        this.scheduleForCourse(course);
+        this.scheduleForCourse(course, options);
       }
 
       // 检查冲突
-      const detectedConflicts = this.detectConflicts();
+      const detectedConflicts = this.detectConflicts(options.selectedWeek);
       conflicts.push(...detectedConflicts);
+
+      const weekInfo = options.selectedWeek 
+        ? `第${options.selectedWeek}周` 
+        : options.weekRange 
+          ? `第${options.weekRange.start}-${options.weekRange.end}周`
+          : '全学期';
 
       return {
         schedule: this.schedule,
         conflicts,
         success: conflicts.length === 0,
         message: conflicts.length === 0 
-          ? '课表生成成功！' 
-          : `课表生成完成，但存在 ${conflicts.length} 个时间冲突`
+          ? `${weekInfo}课表生成成功！` 
+          : `${weekInfo}课表生成完成，但存在 ${conflicts.length} 个时间冲突`
       };
     } catch (error) {
       return {
@@ -64,7 +77,7 @@ export class SchedulingAlgorithm {
   }
 
   // 为单个课程排课
-  private scheduleForCourse(course: Course): void {
+  private scheduleForCourse(course: Course, options: SchedulingOptions = {}): void {
     // 检查课程是否有固定时间段
     if (!course.fixedTimeSlots || !Array.isArray(course.fixedTimeSlots)) {
       console.warn(`课程 ${course.name} 没有有效的固定时间段`);
@@ -78,14 +91,27 @@ export class SchedulingAlgorithm {
         continue;
       }
 
+      // 检查该时间段是否在指定的周次范围内
+      if (options.selectedWeek) {
+        if (!isWeekInRanges(options.selectedWeek, fixedSlot.weeks)) {
+          continue; // 跳过不在指定周次的时间段
+        }
+      } else if (options.weekRange) {
+        // 检查时间段的周次是否与指定范围有交集
+        if (fixedSlot.weeks && !this.hasWeekRangeOverlap(fixedSlot.weeks, options.weekRange)) {
+          continue;
+        }
+      }
+
       for (const timeSlotId of fixedSlot.timeSlotIds) {
         const scheduleItem: ScheduleItem = {
-          id: `${course.id}-${fixedSlot.dayOfWeek}-${timeSlotId}`,
+          id: `${course.id}-${fixedSlot.dayOfWeek}-${timeSlotId}-${this.getWeekSuffix(fixedSlot.weeks, options)}`,
           courseId: course.id,
           teacherId: course.teacherId,
           timeSlotId: timeSlotId,
           dayOfWeek: fixedSlot.dayOfWeek,
-          location: course.location
+          weeks: fixedSlot.weeks,
+          location: fixedSlot.location || course.location
         };
         
         this.schedule.push(scheduleItem);
@@ -93,24 +119,47 @@ export class SchedulingAlgorithm {
     }
   }
 
+  // 生成周次后缀用于ID
+  private getWeekSuffix(weeks?: WeekRange[], options: SchedulingOptions = {}): string {
+    if (options.selectedWeek) {
+      return `w${options.selectedWeek}`;
+    }
+    if (weeks && weeks.length > 0) {
+      return `w${weeks[0].start}-${weeks[0].end}`;
+    }
+    return 'all';
+  }
+
+  // 检查周次范围是否有重叠
+  private hasWeekRangeOverlap(timeSlotWeeks: WeekRange[], targetRange: { start: number; end: number }): boolean {
+    return timeSlotWeeks.some(range => 
+      range.start <= targetRange.end && range.end >= targetRange.start
+    );
+  }
+
   // 检测冲突
-  private detectConflicts(): Conflict[] {
+  private detectConflicts(selectedWeek?: number): Conflict[] {
     const conflicts: Conflict[] = [];
 
     // 检查时间冲突 - 同一时间段有多个课程
-    const timeConflicts = this.detectTimeConflicts();
+    const timeConflicts = this.detectTimeConflicts(selectedWeek);
     conflicts.push(...timeConflicts);
 
     return conflicts;
   }
 
   // 检测时间冲突
-  private detectTimeConflicts(): Conflict[] {
+  private detectTimeConflicts(selectedWeek?: number): Conflict[] {
     const conflicts: Conflict[] = [];
     const timeMap = new Map<string, ScheduleItem[]>();
 
-    // 按时间段分组
+    // 按时间段分组，考虑周次
     this.schedule.forEach(item => {
+      // 如果指定了周次，只检查该周次的冲突
+      if (selectedWeek && item.weeks && !isWeekInRanges(selectedWeek, item.weeks)) {
+        return;
+      }
+
       const key = `${item.dayOfWeek}-${item.timeSlotId}`;
       if (!timeMap.has(key)) {
         timeMap.set(key, []);
@@ -121,19 +170,74 @@ export class SchedulingAlgorithm {
     // 检查每个时间段是否有冲突
     timeMap.forEach((items, timeKey) => {
       if (items.length > 1) {
-        const [dayOfWeek, timeSlotId] = timeKey.split('-');
-        const timeSlot = this.timeSlots.find(ts => ts.id === timeSlotId);
-        const dayName = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日'][parseInt(dayOfWeek)];
+        // 进一步检查周次是否真的重叠
+        const conflictItems = this.findWeekConflictingItems(items, selectedWeek);
         
-        conflicts.push({
-          type: 'time',
-          message: `${dayName} ${timeSlot?.name || timeSlotId} 有多个课程安排`,
-          items: items
-        });
+        if (conflictItems.length > 1) {
+          const [dayOfWeek, timeSlotId] = timeKey.split('-');
+          const timeSlot = this.timeSlots.find(ts => ts.id === timeSlotId);
+          const dayName = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日'][parseInt(dayOfWeek)];
+          
+          const weekInfo = selectedWeek ? `第${selectedWeek}周 ` : '';
+          conflicts.push({
+            type: 'time',
+            message: `${weekInfo}${dayName} ${timeSlot?.name || timeSlotId} 有多个课程安排`,
+            items: conflictItems
+          });
+        }
       }
     });
 
     return conflicts;
+  }
+
+  // 查找在指定周次有冲突的课表项
+  private findWeekConflictingItems(items: ScheduleItem[], selectedWeek?: number): ScheduleItem[] {
+    if (selectedWeek) {
+      // 如果指定了周次，返回所有在该周次有效的项目
+      return items.filter(item => !item.weeks || isWeekInRanges(selectedWeek, item.weeks));
+    }
+
+    // 如果没有指定周次，检查周次重叠
+    const conflicting: ScheduleItem[] = [];
+    
+    for (let i = 0; i < items.length; i++) {
+      const item1 = items[i];
+      let hasConflict = false;
+      
+      for (let j = i + 1; j < items.length; j++) {
+        const item2 = items[j];
+        
+        // 检查两个项目的周次是否有重叠
+        if (this.hasWeekOverlap(item1.weeks, item2.weeks)) {
+          hasConflict = true;
+          if (!conflicting.includes(item2)) {
+            conflicting.push(item2);
+          }
+        }
+      }
+      
+      if (hasConflict && !conflicting.includes(item1)) {
+        conflicting.push(item1);
+      }
+    }
+    
+    return conflicting.length > 0 ? conflicting : items;
+  }
+
+  // 检查两个周次范围是否有重叠
+  private hasWeekOverlap(weeks1?: WeekRange[], weeks2?: WeekRange[]): boolean {
+    // 如果其中任何一个没有周次限制，则认为有重叠
+    if (!weeks1 || !weeks2 || weeks1.length === 0 || weeks2.length === 0) {
+      return true;
+    }
+
+    // 检查是否有任何周次范围重叠
+    return weeks1.some(range1 => 
+      weeks2.some(range2 => 
+        range1.start <= range2.end && range1.end >= range2.start
+      )
+    );
   }
 
 }

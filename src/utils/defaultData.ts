@@ -83,11 +83,15 @@ export const defaultCourses: Course[] = [
     fixedTimeSlots: [
       {
         dayOfWeek: 1, // 周一
-        timeSlotIds: ['5', '6'] // 第5-6节
+        timeSlotIds: ['5', '6'], // 第5-6节
+        weeks: [{ start: 1, end: 6 }, { start: 7, end: 8 }],
+        location: '立人楼B411'
       },
       {
         dayOfWeek: 3, // 周三
-        timeSlotIds: ['5', '6'] // 第5-6节
+        timeSlotIds: ['5', '6'], // 第5-6节
+        weeks: [{ start: 1, end: 6 }, { start: 7, end: 8 }],
+        location: '立人楼B411'
       }
     ]
   },

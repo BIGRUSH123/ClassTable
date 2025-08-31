@@ -41,6 +41,17 @@ function App() {
     }
   }, []);
   
+  // 使用 localStorage 持久化数据，并进行数据迁移
+  const [teachers, setTeachers] = useLocalStorage<Teacher[]>('teachers', defaultTeachers);
+  const [coursesRaw, setCoursesRaw] = useLocalStorage<any[]>('courses', defaultCourses);
+  const [schedule, setSchedule] = useLocalStorage<ScheduleItem[]>('schedule', []);
+  const [timeSlots] = useLocalStorage('timeSlots', defaultTimeSlots);
+  
+  // 迁移课程数据
+  const courses = React.useMemo(() => {
+    return migrateCourseData(coursesRaw);
+  }, [coursesRaw]);
+  
   // 验证课程数据
   React.useEffect(() => {
     if (courses.length > 0) {
@@ -58,17 +69,6 @@ function App() {
       }
     }
   }, [courses]);
-  
-  // 使用 localStorage 持久化数据，并进行数据迁移
-  const [teachers, setTeachers] = useLocalStorage<Teacher[]>('teachers', defaultTeachers);
-  const [coursesRaw, setCoursesRaw] = useLocalStorage<any[]>('courses', defaultCourses);
-  const [schedule, setSchedule] = useLocalStorage<ScheduleItem[]>('schedule', []);
-  const [timeSlots] = useLocalStorage('timeSlots', defaultTimeSlots);
-  
-  // 迁移课程数据
-  const courses = React.useMemo(() => {
-    return migrateCourseData(coursesRaw);
-  }, [coursesRaw]);
   
   const setCourses = (newCourses: Course[] | ((prev: Course[]) => Course[])) => {
     if (typeof newCourses === 'function') {

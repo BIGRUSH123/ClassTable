@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { SchedulingAlgorithm, SchedulingResult } from '../utils/schedulingAlgorithm';
+import { SchedulingAlgorithm, SchedulingResult, SchedulingOptions } from '../utils/schedulingAlgorithm';
 import { predefinedSchedule } from '../utils/predefinedSchedule';
-import { Course, Teacher, Classroom, Class, TimeSlot, SchedulingConstraints, Conflict } from '../types';
-import { Play, AlertTriangle, CheckCircle, XCircle, FileText } from 'lucide-react';
+import { Course, Teacher, TimeSlot, Conflict } from '../types';
+import { Play, AlertTriangle, CheckCircle, XCircle, FileText, Calendar } from 'lucide-react';
 
 interface ScheduleGeneratorProps {
   courses: Course[];
@@ -19,6 +19,8 @@ export const ScheduleGenerator: React.FC<ScheduleGeneratorProps> = ({
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastResult, setLastResult] = useState<SchedulingResult | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState<number | 'all'>('all');
+  const [weekRange, setWeekRange] = useState({ start: 1, end: 20 });
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -33,7 +35,15 @@ export const ScheduleGenerator: React.FC<ScheduleGeneratorProps> = ({
         timeSlots
       );
       
-      const result = algorithm.generateSchedule();
+      // 构建排课选项
+      const options: SchedulingOptions = {};
+      if (selectedWeek !== 'all') {
+        options.selectedWeek = selectedWeek;
+      } else {
+        options.weekRange = weekRange;
+      }
+      
+      const result = algorithm.generateSchedule(options);
       setLastResult(result);
       onScheduleGenerated(result);
     } catch (error) {
@@ -125,6 +135,82 @@ export const ScheduleGenerator: React.FC<ScheduleGeneratorProps> = ({
           </div>
         </div>
 
+        {/* 周次选择 */}
+        <div className="bg-gray-50 p-4 rounded-lg mb-6">
+          <h4 className="font-medium mb-3 flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            排课范围设置
+          </h4>
+          <div className="space-y-4">
+            <div>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  value="all"
+                  checked={selectedWeek === 'all'}
+                  onChange={(e) => setSelectedWeek('all')}
+                  className="text-primary-600"
+                />
+                <span>生成全学期课表</span>
+              </label>
+            </div>
+            <div>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  value="single"
+                  checked={selectedWeek !== 'all'}
+                  onChange={(e) => setSelectedWeek(1)}
+                  className="text-primary-600"
+                />
+                <span>生成指定周次课表</span>
+              </label>
+              {selectedWeek !== 'all' && (
+                <div className="ml-6 mt-2">
+                  <select
+                    value={selectedWeek}
+                    onChange={(e) => setSelectedWeek(parseInt(e.target.value))}
+                    className="border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    {Array.from({ length: 20 }, (_, i) => i + 1).map(week => (
+                      <option key={week} value={week}>第{week}周</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            {selectedWeek === 'all' && (
+              <div className="bg-white p-3 rounded border">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  周次范围：
+                </label>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={weekRange.start}
+                    onChange={(e) => setWeekRange(prev => ({ ...prev, start: parseInt(e.target.value) }))}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm"
+                  >
+                    {Array.from({ length: 20 }, (_, i) => i + 1).map(week => (
+                      <option key={week} value={week}>{week}</option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-gray-600">到</span>
+                  <select
+                    value={weekRange.end}
+                    onChange={(e) => setWeekRange(prev => ({ ...prev, end: parseInt(e.target.value) }))}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm"
+                  >
+                    {Array.from({ length: 20 }, (_, i) => i + 1).map(week => (
+                      <option key={week} value={week}>{week}</option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-gray-600">周</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* 生成按钮 */}
         <div className="text-center space-y-4">
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -136,7 +222,8 @@ export const ScheduleGenerator: React.FC<ScheduleGeneratorProps> = ({
               }`}
             >
               <Play className="h-4 w-4" />
-              {isGenerating ? '正在生成...' : '智能排课'}
+              {isGenerating ? '正在生成...' : 
+                selectedWeek === 'all' ? '生成全学期课表' : `生成第${selectedWeek}周课表`}
             </button>
             
             <button

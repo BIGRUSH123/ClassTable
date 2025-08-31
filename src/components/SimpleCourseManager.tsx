@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Course, Teacher, FixedTimeSlot } from '../types';
 import { Plus, Edit2, Trash2, BookOpen, Upload, Clock, MapPin } from 'lucide-react';
 import { SimpleCourseImporter } from './SimpleCourseImporter';
+import { CourseTimeParser } from './CourseTimeParser';
 
 interface SimpleCourseManagerProps {
   courses: Course[];
@@ -28,6 +29,7 @@ export const SimpleCourseManager: React.FC<SimpleCourseManagerProps> = ({
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [editingCourse, setEditingCourse] = useState<string | null>(null);
   const [showImporter, setShowImporter] = useState(false);
+  const [showNewParser, setShowNewParser] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     subject: '',
@@ -167,6 +169,13 @@ export const SimpleCourseManager: React.FC<SimpleCourseManagerProps> = ({
           >
             <Upload className="h-4 w-4" />
             批量导入
+          </button>
+          <button
+            onClick={() => setShowNewParser(true)}
+            className="btn-secondary flex items-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100"
+          >
+            <BookOpen className="h-4 w-4" />
+            智能解析
           </button>
         </div>
       </div>
@@ -332,6 +341,17 @@ export const SimpleCourseManager: React.FC<SimpleCourseManagerProps> = ({
         <SimpleCourseImporter
           teachers={teachers}
           onImportCourses={handleImportCourses}
+        />
+      )}
+
+      {showNewParser && (
+        <CourseTimeParser
+          teachers={teachers}
+          onImportCourses={(courses) => {
+            handleImportCourses(courses);
+            setShowNewParser(false);
+          }}
+          onClose={() => setShowNewParser(false)}
         />
       )}
 

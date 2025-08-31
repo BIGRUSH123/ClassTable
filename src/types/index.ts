@@ -26,10 +26,18 @@ export interface Classroom {
   equipment: string[];
 }
 
-// 固定时间段
+// 周次范围
+export interface WeekRange {
+  start: number;
+  end: number;
+}
+
+// 带周次的时间段
 export interface FixedTimeSlot {
   dayOfWeek: number; // 1-7 (周一-周日)
   timeSlotIds: string[]; // 时间段ID数组
+  weeks?: WeekRange[]; // 周次范围数组，如 [{start: 1, end: 6}, {start: 7, end: 8}]
+  location?: string; // 特定时间段的地点（可能不同周次地点不同）
 }
 
 // 课程信息
@@ -40,8 +48,11 @@ export interface Course {
   teacherId: string;
   credits: number; // 学分
   fixedTimeSlots: FixedTimeSlot[]; // 固定的上课时间
-  location?: string; // 上课地点
-  weeks?: string; // 上课周次，如 "1-16周"
+  location?: string; // 默认上课地点
+  weeks?: string; // 原始上课周次字符串，如 "1-16周"
+  teachers?: string[]; // 支持多个教师，用逗号分隔的教师名
+  department?: string; // 学院
+  campus?: string; // 校区
 }
 
 // 班级信息
@@ -60,6 +71,7 @@ export interface ScheduleItem {
   teacherId: string;
   timeSlotId: string;
   dayOfWeek: number; // 1-7 (周一-周日)
+  weeks?: WeekRange[]; // 该课表项的有效周次
   location?: string; // 上课地点
 }
 

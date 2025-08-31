@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Course, Teacher, FixedTimeSlot } from '../types';
 import { Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import { parseCourseInfo, parseCourseTime } from '../utils/courseTimeParser';
 
 interface SimpleCourseImporterProps {
   teachers: Teacher[];
