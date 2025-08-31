@@ -234,7 +234,7 @@ function App() {
               </button>
               <button
                 onClick={() => {
-                  if (confirm('确定要重置所有数据吗？这将清除所有课程和课表信息。')) {
+                  if (window.confirm('确定要重置所有数据吗？这将清除所有课程和课表信息。')) {
                     localStorage.clear();
                     window.location.reload();
                   }

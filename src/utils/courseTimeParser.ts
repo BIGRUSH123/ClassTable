@@ -101,10 +101,11 @@ export function parseTimeLine(line: string): {
   // 解析时间安排：星期X第Y-Z节
   const timeSlots: FixedTimeSlot[] = [];
   
-  // 匹配所有 "星期X第Y-Z节" 的模式
-  const timeMatches = timeContent.matchAll(/(星期[一二三四五六日]|周[一二三四五六日])\s*第\d+(?:-\d+)?节/g);
+  // 匹配所有 "星期X第Y-Z节" 的模式 - 使用兼容的方法
+  const regex = /(星期[一二三四五六日]|周[一二三四五六日])\s*第\d+(?:-\d+)?节/g;
+  let match;
   
-  for (const match of timeMatches) {
+  while ((match = regex.exec(timeContent)) !== null) {
     const fullMatch = match[0];
     
     // 提取星期
