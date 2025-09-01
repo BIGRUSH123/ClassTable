@@ -193,9 +193,22 @@ export class SchedulingAlgorithm {
 
   // 查找在指定周次有冲突的课表项
   private findWeekConflictingItems(items: ScheduleItem[], selectedWeek?: number): ScheduleItem[] {
+    console.log('findWeekConflictingItems 被调用:', {
+      itemsCount: items.length,
+      selectedWeek,
+      items: items.map(item => ({
+        courseId: item.courseId,
+        dayOfWeek: item.dayOfWeek,
+        timeSlotId: item.timeSlotId,
+        weeks: item.weeks
+      }))
+    });
+
     if (selectedWeek) {
       // 如果指定了周次，返回所有在该周次有效的项目
-      return items.filter(item => !item.weeks || isWeekInRanges(selectedWeek, item.weeks));
+      const filtered = items.filter(item => !item.weeks || isWeekInRanges(selectedWeek, item.weeks));
+      console.log('指定周次过滤结果:', filtered.length);
+      return filtered;
     }
 
     // 如果没有指定周次，检查周次重叠
@@ -208,12 +221,17 @@ export class SchedulingAlgorithm {
       for (let j = i + 1; j < items.length; j++) {
         const item2 = items[j];
         
+        console.log(`检查冲突: 课程${item1.courseId} vs 课程${item2.courseId}`);
+        
         // 检查两个项目的周次是否有重叠
         if (this.hasWeekOverlap(item1.weeks, item2.weeks)) {
+          console.log('发现冲突！');
           hasConflict = true;
           if (!conflicting.includes(item2)) {
             conflicting.push(item2);
           }
+        } else {
+          console.log('无冲突');
         }
       }
       
@@ -222,22 +240,43 @@ export class SchedulingAlgorithm {
       }
     }
     
-    return conflicting.length > 0 ? conflicting : items;
+    console.log('findWeekConflictingItems 结果:', {
+      conflictingCount: conflicting.length,
+      originalCount: items.length,
+      returnItems: conflicting.length > 0 ? conflicting.length : items.length
+    });
+    
+    // 🚨 这里是关键问题！
+    // 原来的逻辑：如果没有真正的冲突，返回所有项目 (items)
+    // 修正：如果没有真正的冲突，应该返回空数组
+    return conflicting;
   }
 
   // 检查两个周次范围是否有重叠
   private hasWeekOverlap(weeks1?: WeekRange[], weeks2?: WeekRange[]): boolean {
+    // 调试信息
+    console.log('检查周次重叠:', {
+      weeks1,
+      weeks2
+    });
+    
     // 如果其中任何一个没有周次限制，则认为有重叠
     if (!weeks1 || !weeks2 || weeks1.length === 0 || weeks2.length === 0) {
+      console.log('其中一个没有周次限制，假设重叠');
       return true;
     }
 
     // 检查是否有任何周次范围重叠
-    return weeks1.some(range1 => 
-      weeks2.some(range2 => 
-        range1.start <= range2.end && range1.end >= range2.start
-      )
+    const hasOverlap = weeks1.some(range1 => 
+      weeks2.some(range2 => {
+        const overlap = range1.start <= range2.end && range1.end >= range2.start;
+        console.log(`检查范围: ${range1.start}-${range1.end} vs ${range2.start}-${range2.end}, 重叠: ${overlap}`);
+        return overlap;
+      })
     );
+    
+    console.log('最终结果:', hasOverlap);
+    return hasOverlap;
   }
 
 }

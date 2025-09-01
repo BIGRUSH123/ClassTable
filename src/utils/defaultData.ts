@@ -65,6 +65,18 @@ export const defaultTeachers: Teacher[] = [
     name: '周毅',
     subjects: ['高级算法设计与分析'],
     unavailableSlots: []
+  },
+  {
+    id: '9',
+    name: '封莎',
+    subjects: ['马克思主义理论'],
+    unavailableSlots: []
+  },
+  {
+    id: '10',
+    name: '叶茂',
+    subjects: ['学术写作'],
+    unavailableSlots: []
   }
 ];
 

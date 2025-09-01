@@ -10,6 +10,7 @@ interface SimpleCourseManagerProps {
   onAddCourse: (course: Omit<Course, 'id'>) => void;
   onUpdateCourse: (id: string, course: Partial<Course>) => void;
   onDeleteCourse: (id: string) => void;
+  onAddTeacher?: (teacher: Omit<Teacher, 'id'>) => void;
 }
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -24,7 +25,8 @@ export const SimpleCourseManager: React.FC<SimpleCourseManagerProps> = ({
   teachers,
   onAddCourse,
   onUpdateCourse,
-  onDeleteCourse
+  onDeleteCourse,
+  onAddTeacher
 }) => {
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [editingCourse, setEditingCourse] = useState<string | null>(null);
@@ -142,6 +144,23 @@ export const SimpleCourseManager: React.FC<SimpleCourseManagerProps> = ({
   };
 
   const handleImportCourses = (importedCourses: Omit<Course, 'id'>[]) => {
+    // 调试：打印导入的课程数据
+    console.log('=== 导入的课程数据 ===');
+    importedCourses.forEach((course, index) => {
+      console.log(`课程 ${index + 1}: ${course.name}`);
+      console.log('教师:', course.teachers);
+      console.log('时间段:', course.fixedTimeSlots);
+      course.fixedTimeSlots.forEach((slot, slotIndex) => {
+        console.log(`  时间段 ${slotIndex + 1}:`, {
+          dayOfWeek: slot.dayOfWeek,
+          timeSlotIds: slot.timeSlotIds,
+          weeks: slot.weeks,
+          location: slot.location
+        });
+      });
+      console.log('---');
+    });
+    
     importedCourses.forEach(course => {
       onAddCourse(course);
     });
@@ -351,6 +370,7 @@ export const SimpleCourseManager: React.FC<SimpleCourseManagerProps> = ({
             handleImportCourses(courses);
             setShowNewParser(false);
           }}
+          onAddTeacher={onAddTeacher}
           onClose={() => setShowNewParser(false)}
         />
       )}

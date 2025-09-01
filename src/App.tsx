@@ -173,6 +173,7 @@ function App() {
             onAddCourse={handleAddCourse}
             onUpdateCourse={handleUpdateCourse}
             onDeleteCourse={handleDeleteCourse}
+            onAddTeacher={handleAddTeacher}
           />
         );
       case 'generate':
